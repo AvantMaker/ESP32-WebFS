@@ -72,7 +72,7 @@ void setup() {
     html += "<input type='submit' value='Upload'>";
     html += "</form>";
     html += "<p>This project is proudly brought to you by the team at AvantMaker.com.</p>";
-    html += "<p>Visit us at <a href='AvantMaker.com'>AvantMaker.com</a> where we've crafted a comprehensive collection <br> of Reference and Tutorial materials for the ESP32</p>";
+    html += "<p>Visit us at www.AvantMaker.com where we've crafted a comprehensive collection <br> of Reference and Tutorial materials for the ESP32.</p>";
     server.send(200, "text/html", html);
   });
 

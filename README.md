@@ -27,6 +27,11 @@ This project provides a web-based interface to manage the SPIFFS (SPI Flash File
 
 This is particularly useful for IoT projects where you need to configure the ESP32 remotely, store data, or manage resources without a direct connection.
 
+---
+![ESP32-WebFS-Interface](https://avantmaker.com/wp-content/uploads/2025/03/ESP32-WebFS-Home.jpg)
+
+
+
 ## Key Features
 
 * **Web-based File Management:** Access and manage your ESP32's files through a user-friendly web interface.

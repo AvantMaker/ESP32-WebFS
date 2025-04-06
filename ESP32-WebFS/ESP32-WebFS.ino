@@ -27,14 +27,13 @@
  * to empowering makers, learners, and enthusiasts with
  * the resources they need to bring their nnovative ideas to life.
  */
- 
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <SPIFFS.h>
 
-const char* ssid = "your-SSID";          // Replace with your Wi-Fi SSID
-const char* password = "your-PASSWORD";  // Replace with your Wi-Fi password
+const char* ssid = "your_SSID";          // Replace with your Wi-Fi SSID
+const char* password = "your_PASSWORD";  // Replace with your Wi-Fi password
 
 WebServer server(80);
 
@@ -59,22 +58,42 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
   
-  // Route for the root page
-  server.on("/", HTTP_GET, []() {
-    String html = "<h1>ESP32 WebFS</h1>";
-    html += "<p>ESP32 WebFS provides a web-based interface to manage the SPIFFS on your ESP32. </p>";
-    html += "<p><a href='/list'>View Files</a></p>";
-    html += "<p><a href='/delete'>Delete Files</a></p>";
-    html += "<p><a href='/download'>Download Files</a></p>";
-    html += "<h2>Upload New File</h2>";
-    html += "<form method='post' action='/upload' enctype='multipart/form-data'>";
-    html += "<input type='file' name='upload'>";
-    html += "<input type='submit' value='Upload'>";
-    html += "</form>";
-    html += "<p>This project is proudly brought to you by the team at AvantMaker.com.</p>";
-    html += "<p>Visit us at www.AvantMaker.com where we've crafted a comprehensive collection <br> of Reference and Tutorial materials for the ESP32.</p>";
-    server.send(200, "text/html", html);
-  });
+// Route for the root page
+server.on("/", HTTP_GET, []() {
+  String html = "<h1>ESP32 WebFS</h1>";
+  html += "<p>ESP32 WebFS provides a web-based interface to manage the SPIFFS on your ESP32. </p>";
+  html += "<p><a href='/list'>View Files</a></p>";
+  html += "<p><a href='/delete'>Delete Files</a></p>";
+  html += "<p><a href='/download'>Download Files</a></p>";
+  html += "<h2>Upload New File</h2>";
+  html += "<strong>Note:</strong> Only files smaller than 100 KB can be uploaded. Attempting to upload larger files may cause the system to freeze.";
+  html += "<form method='post' action='/upload' enctype='multipart/form-data' onsubmit='return validateForm()'>";
+  html += "<input type='file' name='upload' id='fileInput' onchange='checkFileSelected()'>";
+  html += "<input type='submit' value='Upload' id='uploadButton' disabled>";
+  html += "</form>";
+  html += "<script>";
+  html += "function checkFileSelected() {";
+  html += "  var fileInput = document.getElementById('fileInput');";
+  html += "  var uploadButton = document.getElementById('uploadButton');";
+  html += "  if(fileInput.files.length > 0) {";
+  html += "    uploadButton.disabled = false;";
+  html += "  } else {";
+  html += "    uploadButton.disabled = true;";
+  html += "  }";
+  html += "}";
+  html += "function validateForm() {";
+  html += "  var fileInput = document.getElementById('fileInput');";
+  html += "  if(fileInput.files.length === 0) {";
+  html += "    alert('Please select a file to upload first.');";
+  html += "    return false;";
+  html += "  }";
+  html += "  return true;";
+  html += "}";
+  html += "</script>";
+  html += "<p>This project is proudly brought to you by the team at AvantMaker.com.</p>";
+  html += "<p>Visit us at www.AvantMaker.com where we've crafted a comprehensive collection <br> of Reference and Tutorial materials for the ESP32.</p>";
+  server.send(200, "text/html", html);
+});
 
   // Route to handle file uploads
   server.on("/upload", HTTP_POST, 
@@ -120,12 +139,51 @@ void setup() {
       Serial.println(fileName);
       
       if(SPIFFS.exists(fileName)){
+        // Determine content type based on file extension
+        String contentType = "text/plain";
+        if(fileName.endsWith(".htm") || fileName.endsWith(".html")) contentType = "text/html";
+        else if(fileName.endsWith(".css")) contentType = "text/css";
+        else if(fileName.endsWith(".js")) contentType = "application/javascript";
+        else if(fileName.endsWith(".png")) contentType = "image/png";
+        else if(fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) contentType = "image/jpeg";
+        else if(fileName.endsWith(".gif")) contentType = "image/gif";
+        else if(fileName.endsWith(".ico")) contentType = "image/x-icon";
+        else if(fileName.endsWith(".xml")) contentType = "text/xml";
+        else if(fileName.endsWith(".pdf")) contentType = "application/pdf";
+        else if(fileName.endsWith(".zip")) contentType = "application/zip";
+        else if(fileName.endsWith(".json")) contentType = "application/json";
+        
         File file = SPIFFS.open(fileName, "r");
         if(file){
-          String content = file.readString();
-          file.close();
+          // For text files, you can use readString
+          if(contentType.startsWith("text/") || 
+            contentType == "application/javascript" || 
+            contentType == "application/json") {
+            String content = file.readString();
+            file.close();
+            server.send(200, contentType, content);
+          } 
+          // For binary files, use the client directly
+          else {
+            WiFiClient client = server.client();
+            
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: " + contentType);
+            client.println("Connection: close");
+            client.println();
+            
+            // Send file in chunks
+            uint8_t buffer[1024];
+            size_t bytesRead;
+            while((bytesRead = file.read(buffer, sizeof(buffer))) > 0){
+              client.write(buffer, bytesRead);
+              yield(); // Allow background tasks
+            }
+            
+            file.close();
+            return; // Skip the send() as we've already sent the response
+          }
           
-          server.send(200, "text/plain", content);
           Serial.println("File sent successfully");
         } else {
           server.send(500, "text/plain", "Failed to open file");
@@ -178,6 +236,18 @@ void handleFileList() {
   
   String output = "<html><head><title>ESP32 File List</title></head><body>";
   output += "<h1>SPIFFS File List</h1>";
+  
+  // Adding the note about viewable file types
+  output += "<div style='padding:10px; background-color:#f8f9fa; border:1px solid #ddd; margin-bottom:15px;'>";
+  output += "<strong>Note:</strong> The following file types have been tested and confirmed viewable in browser: ";
+  output += "<ul>";
+  output += "<li>Text files (.txt, .html, .css, .js, .json)</li>";
+  output += "<li>Images (.jpg, .png, .jpeg, .gif)</li>";
+  output += "<li>PDF (viewable if your browser supports displaying it)</li>";
+  output += "</ul>";
+  output += "Other file types may not display properly in the browser and might be downloaded instead.";
+  output += "</div>";
+  
   output += "<table border='1'><tr><th>Name</th><th>Size</th><th>Actions</th></tr>";
   
   if(root.isDirectory()){

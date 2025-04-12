@@ -10,7 +10,7 @@ This project is proudly brought to you by the team at **AvantMaker.com**.
 Visit us at [AvantMaker.com](https://www.avantmaker.com) where we've crafted a comprehensive collection of Reference and Tutorial materials for the ESP32, a mighty microcontroller that powers countless IoT creations.
 
 ---
-![ESP32-WebFS](https://avantmaker.com/wp-content/uploads/2025/03/Simplifying-SPIFFS-File-Management-for-Your-ESP32-Projects.jpg)
+![ESP32-WebFS](https://avantmaker.com/wp-content/uploads/2025/04/ESP32-WebFS-Feature-Image.jpg)
 
 **Manage your ESP32's SPIFFS files via a web browser!**
 
